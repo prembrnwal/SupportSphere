@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Bell, Search, Sun, Moon, Menu, Home } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { Bell, Search, Sun, Moon, Menu, Home, LogOut, User as UserIcon } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useUIStore } from '@/store/uiStore';
@@ -13,11 +15,14 @@ const notifications = [
 ];
 
 export function Navbar() {
-  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const { toggleSidebar } = useUIStore();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +34,13 @@ export function Navbar() {
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
+
+  const handleConfirmLogout = () => {
+    logout();
+    setLogoutModalOpen(false);
+    toast.success('Logged out successfully');
+    navigate('/login');
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/70 dark:border-white/10 bg-white/90 dark:bg-[#0b0d12]/90 backdrop-blur-md px-4 lg:px-6">
@@ -110,14 +122,35 @@ export function Navbar() {
               <Link
                 to="/profile"
                 onClick={() => setProfileOpen(false)}
-                className="block rounded-lg px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
               >
-                View profile
+                <UserIcon className="h-4 w-4 text-slate-400" />
+                View Profile
               </Link>
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  setLogoutModalOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors mt-1 border-t border-slate-100 dark:border-white/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirm Sign Out"
+        description="Are you sure you want to log out of SupportHub? You will need to sign in again to access your account."
+        confirmLabel="Log Out"
+        variant="danger"
+      />
     </header>
   );
 }

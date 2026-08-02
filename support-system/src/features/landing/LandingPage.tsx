@@ -19,6 +19,7 @@ import {
   LogOut,
   User as UserIcon,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui';
 import { testimonials, faqs } from '@/lib/dummyData';
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
@@ -97,10 +98,16 @@ const liveQueueTickets = [
 export function LandingPage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const { theme, toggleTheme } = useThemeStore();
   const { user, isAuthenticated, logout } = useAuthStore();
 
   const dashboardTarget = user?.role === 'admin' ? '/admin' : '/dashboard';
+
+  const handleConfirmLogout = () => {
+    logout();
+    setLogoutModalOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0b0d12] text-slate-900 dark:text-slate-100 overflow-x-hidden antialiased">
@@ -154,7 +161,7 @@ export function LandingPage() {
                   </button>
                 </Link>
                 <button
-                  onClick={logout}
+                  onClick={() => setLogoutModalOpen(true)}
                   title="Logout"
                   className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                 >
@@ -525,6 +532,16 @@ export function LandingPage() {
           © {new Date().getFullYear()} Helpdesk. All rights reserved.
         </div>
       </footer>
+
+      <ConfirmDialog
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirm Sign Out"
+        description="Are you sure you want to log out of SupportHub? You will need to sign in again to access your account."
+        confirmLabel="Log Out"
+        variant="danger"
+      />
     </div>
   );
 }

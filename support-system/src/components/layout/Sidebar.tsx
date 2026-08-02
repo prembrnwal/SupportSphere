@@ -1,4 +1,6 @@
-import { NavLink, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import {
   LayoutDashboard,
   PlusCircle,
@@ -8,6 +10,7 @@ import {
   LogOut,
   Home,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
 import { cn } from '@/lib/utils';
@@ -25,9 +28,18 @@ const adminLinks = [
 ];
 
 export function Sidebar() {
+  const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const isAdmin = user?.role === 'admin';
+
+  const handleConfirmLogout = () => {
+    logout();
+    setLogoutModalOpen(false);
+    toast.success('Logged out successfully');
+    navigate('/login');
+  };
 
   const content = (
     <div className="flex h-full flex-col">
@@ -67,13 +79,23 @@ export function Sidebar() {
           Return to Home
         </Link>
         <button
-          onClick={logout}
+          onClick={() => setLogoutModalOpen(true)}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors"
         >
           <LogOut className="h-4.5 w-4.5" />
           Logout
         </button>
       </div>
+
+      <ConfirmDialog
+        open={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        title="Confirm Sign Out"
+        description="Are you sure you want to log out of SupportHub? You will need to sign in again to access your account."
+        confirmLabel="Log Out"
+        variant="danger"
+      />
     </div>
   );
 
