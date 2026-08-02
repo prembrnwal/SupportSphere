@@ -11,14 +11,20 @@ interface ThemeStore {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
-  if (theme === 'dark') root.classList.add('dark');
-  else root.classList.remove('dark');
+  if (theme === 'dark') {
+    root.classList.add('dark');
+  } else {
+    root.classList.remove('dark');
+  }
 }
+
+// Always ensure initial load is light mode by default
+applyTheme('light');
 
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      theme: (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') as Theme,
+      theme: 'light' as Theme,
       toggleTheme: () => {
         const next = get().theme === 'dark' ? 'light' : 'dark';
         applyTheme(next);
@@ -32,7 +38,11 @@ export const useThemeStore = create<ThemeStore>()(
     {
       name: 'sh-theme',
       onRehydrateStorage: () => (state) => {
-        if (state) applyTheme(state.theme);
+        if (state) {
+          applyTheme(state.theme);
+        } else {
+          applyTheme('light');
+        }
       },
     }
   )
