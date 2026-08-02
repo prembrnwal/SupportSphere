@@ -65,11 +65,11 @@ export function AdminDashboard() {
     : [];
 
   const statCards = [
-    { label: 'Total Users', value: users?.length ?? 0, icon: Users, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/40', loading: usersLoading },
-    { label: 'Total Tickets', value: totalTickets, icon: TicketIcon, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40', loading: isLoading },
-    { label: 'Open Tickets', value: openCount, icon: Inbox, color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/40', loading: isLoading },
-    { label: 'In Progress', value: inProgressCount, icon: Loader2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40', loading: isLoading },
-    { label: 'Closed Tickets', value: closedCount, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40', loading: isLoading },
+    { label: 'Total Users', value: users?.length ?? 0, icon: Users, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/40', loading: usersLoading, to: '/admin/users' },
+    { label: 'Total Tickets', value: totalTickets, icon: TicketIcon, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40', loading: isLoading, to: '/tickets' },
+    { label: 'Open Tickets', value: openCount, icon: Inbox, color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/40', loading: isLoading, to: '/tickets' },
+    { label: 'In Progress', value: inProgressCount, icon: Loader2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40', loading: isLoading, to: '/tickets' },
+    { label: 'Closed Tickets', value: closedCount, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40', loading: isLoading, to: '/tickets' },
   ];
 
   return (
@@ -87,15 +87,17 @@ export function AdminDashboard() {
             <CardSkeleton key={s.label} />
           ) : (
             <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
-              <Card className="hover:-translate-y-0.5 transition-transform duration-200">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{s.label}</p>
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${s.color}`}>
-                    <s.icon className="h-4 w-4" />
+              <Link to={s.to} className="block">
+                <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{s.label}</p>
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${s.color}`}>
+                      <s.icon className="h-4 w-4" />
+                    </div>
                   </div>
-                </div>
-                <p className="text-3xl font-extrabold mt-3 text-slate-900 dark:text-white">{s.value}</p>
-              </Card>
+                  <p className="text-3xl font-extrabold mt-3 text-slate-900 dark:text-white">{s.value}</p>
+                </Card>
+              </Link>
             </motion.div>
           )
         )}

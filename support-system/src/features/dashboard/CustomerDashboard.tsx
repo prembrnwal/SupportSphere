@@ -8,17 +8,17 @@ import { timeAgo, formatDate } from '@/lib/utils';
 import { CATEGORY_LABELS } from '@/lib/dummyData';
 
 const statCards = [
-  { key: 'open', label: 'Open Tickets', icon: Inbox, color: 'text-sky-500 bg-sky-50 dark:bg-sky-500/10' },
-  { key: 'in_progress', label: 'In Progress', icon: Loader2, color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' },
-  { key: 'closed', label: 'Closed', icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
-  { key: 'total', label: 'Total Tickets', icon: TicketIcon, color: 'text-brand-500 bg-brand-50 dark:bg-brand-500/10' },
+  { key: 'open', label: 'Open Tickets', icon: Inbox, color: 'text-sky-500 bg-sky-50 dark:bg-sky-500/10', to: '/tickets' },
+  { key: 'in_progress', label: 'In Progress', icon: Loader2, color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10', to: '/tickets' },
+  { key: 'closed', label: 'Closed', icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10', to: '/tickets' },
+  { key: 'total', label: 'Total Tickets', icon: TicketIcon, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/40', to: '/tickets' },
 ];
 
 export function CustomerDashboard() {
   const { user } = useAuthStore();
   const { data: allTickets, isLoading, isError, refetch } = useTicketsList();
 
-  const tickets = allTickets?.filter((t) => t.createdBy === user?.name) ?? [];
+  const tickets = allTickets?.filter((t) => t.createdBy === user?.name || t.createdBy === user?.email) ?? [];
   const counts = {
     open: tickets.filter((t) => t.status === 'open').length,
     in_progress: tickets.filter((t) => t.status === 'in_progress').length,
@@ -61,17 +61,19 @@ export function CustomerDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: i * 0.05 }}
                 >
-                  <Card className="hover:-translate-y-0.5 transition-transform duration-200">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.color}`}>
-                        <s.icon className="h-4.5 w-4.5" />
+                  <Link to={s.to} className="block">
+                    <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.color}`}>
+                          <s.icon className="h-4.5 w-4.5" />
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-3xl font-bold mt-3 text-slate-900 dark:text-white">
-                      {counts[s.key as keyof typeof counts]}
-                    </p>
-                  </Card>
+                      <p className="text-3xl font-bold mt-3 text-slate-900 dark:text-white">
+                        {counts[s.key as keyof typeof counts]}
+                      </p>
+                    </Card>
+                  </Link>
                 </motion.div>
               ))}
         </div>
@@ -80,7 +82,7 @@ export function CustomerDashboard() {
       <Card>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-slate-900 dark:text-white">Recent Activity</h2>
-          <Link to="/tickets" className="text-sm text-brand-600 dark:text-brand-400 font-medium hover:underline flex items-center gap-1">
+          <Link to="/tickets" className="text-sm text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center gap-1">
             View all <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </div>
@@ -104,7 +106,7 @@ export function CustomerDashboard() {
               <Link
                 key={t.id}
                 to={`/tickets/${t.id}`}
-                className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-xl border border-slate-100 dark:border-white/10 p-4 hover:border-brand-200 dark:hover:border-brand-500/30 hover:bg-slate-50/50 dark:hover:bg-white/[0.03] transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 rounded-xl border border-slate-100 dark:border-white/10 p-4 hover:border-teal-200 dark:hover:border-teal-500/30 hover:bg-slate-50/50 dark:hover:bg-white/[0.03] transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -112,7 +114,7 @@ export function CustomerDashboard() {
                     <span className="text-sm font-medium text-slate-900 dark:text-white truncate">{t.title}</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    {CATEGORY_LABELS[t.category]} · Updated {timeAgo(t.updatedAt)}
+                    {CATEGORY_LABELS[t.category] || t.category} · Updated {timeAgo(t.updatedAt)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
