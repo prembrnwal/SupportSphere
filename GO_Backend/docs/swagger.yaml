@@ -1,0 +1,813 @@
+basePath: /
+definitions:
+  dto.ApiResponse:
+    properties:
+      data: {}
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  dto.AssignTicketRequest:
+    properties:
+      assigned_to:
+        type: string
+    required:
+    - assigned_to
+    type: object
+  dto.AuthResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        description: Access token expiration in seconds (900s = 15m)
+        type: integer
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  dto.CreateTicketRequest:
+    properties:
+      category:
+        type: string
+      description:
+        minLength: 5
+        type: string
+      priority:
+        allOf:
+        - $ref: '#/definitions/models.TicketPriority'
+        enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+        - CRITICAL
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - description
+    - title
+    type: object
+  dto.DashboardStatsResponse:
+    properties:
+      closed_tickets:
+        type: integer
+      generated_at:
+        type: string
+      in_progress_tickets:
+        type: integer
+      open_tickets:
+        type: integer
+      recent_tickets:
+        items:
+          $ref: '#/definitions/models.Ticket'
+        type: array
+      resolved_tickets:
+        type: integer
+      tickets_by_priority:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total_tickets:
+        type: integer
+      total_users:
+        type: integer
+    type: object
+  dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.PaginatedResponse:
+    properties:
+      items: {}
+      pagination:
+        $ref: '#/definitions/dto.PaginationMeta'
+    type: object
+  dto.PaginationMeta:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  dto.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/models.UserRole'
+        enum:
+        - ADMIN
+        - CUSTOMER
+    required:
+    - email
+    - name
+    - password
+    type: object
+  dto.ResetPasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - token
+    type: object
+  dto.UpdateTicketRequest:
+    properties:
+      category:
+        type: string
+      description:
+        minLength: 5
+        type: string
+      priority:
+        allOf:
+        - $ref: '#/definitions/models.TicketPriority'
+        enum:
+        - LOW
+        - MEDIUM
+        - HIGH
+        - CRITICAL
+      status:
+        allOf:
+        - $ref: '#/definitions/models.TicketStatus'
+        enum:
+        - OPEN
+        - IN_PROGRESS
+        - RESOLVED
+        - CLOSED
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+    type: object
+  dto.UpdateUserRequest:
+    properties:
+      avatar_url:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/models.UserRole'
+        enum:
+        - ADMIN
+        - CUSTOMER
+    type: object
+  models.Ticket:
+    properties:
+      assigned_to:
+        type: string
+      assignee:
+        $ref: '#/definitions/models.User'
+      category:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      creator:
+        $ref: '#/definitions/models.User'
+      description:
+        type: string
+      id:
+        type: string
+      priority:
+        $ref: '#/definitions/models.TicketPriority'
+      status:
+        $ref: '#/definitions/models.TicketStatus'
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.TicketPriority:
+    enum:
+    - LOW
+    - MEDIUM
+    - HIGH
+    - CRITICAL
+    type: string
+    x-enum-varnames:
+    - PriorityLow
+    - PriorityMedium
+    - PriorityHigh
+    - PriorityCritical
+  models.TicketStatus:
+    enum:
+    - OPEN
+    - IN_PROGRESS
+    - RESOLVED
+    - CLOSED
+    type: string
+    x-enum-varnames:
+    - StatusOpen
+    - StatusInProgress
+    - StatusResolved
+    - StatusClosed
+  models.User:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_email_verified:
+        type: boolean
+      last_login_at:
+        type: string
+      name:
+        type: string
+      role:
+        $ref: '#/definitions/models.UserRole'
+      updated_at:
+        type: string
+    type: object
+  models.UserRole:
+    enum:
+    - ADMIN
+    - CUSTOMER
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleCustomer
+host: localhost:8080
+info:
+  contact: {}
+  description: Production-ready REST API for Support Management System built with
+    Go & Fiber
+  title: Support Management System API
+  version: "1.0"
+paths:
+  /api/v1/admin/assign-ticket/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Assign a ticket to a support agent by ID
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Assign Ticket Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AssignTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Ticket'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign ticket to a support agent (ADMIN only)
+      tags:
+      - Admin
+  /api/v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send password reset token/link for verified account
+      parameters:
+      - description: Forgot Password Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Request Password Reset Token
+      tags:
+      - Auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return Access Token & Refresh Token
+      parameters:
+      - description: Login Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AuthResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Login user
+      tags:
+      - Auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke user refresh tokens and terminate session
+      parameters:
+      - description: Logout Payload
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - Auth
+  /api/v1/auth/refresh-token:
+    post:
+      consumes:
+      - application/json
+      description: Rotate refresh token and return new 15-minute access token
+      parameters:
+      - description: Refresh Token Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AuthResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Refresh Access Token
+      tags:
+      - Auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with CUSTOMER or ADMIN role
+      parameters:
+      - description: Register Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AuthResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Register a new user
+      tags:
+      - Auth
+  /api/v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Update user password using token
+      parameters:
+      - description: Reset Password Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      summary: Reset Password using Reset Token
+      tags:
+      - Auth
+  /api/v1/dashboard/stats:
+    get:
+      description: Retrieve count of tickets by status, priority, and total users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DashboardStatsResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get dashboard statistics
+      tags:
+      - Dashboard
+  /api/v1/me:
+    get:
+      description: Get current logged-in user info from JWT
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current logged-in user profile
+      tags:
+      - User
+  /api/v1/tickets:
+    get:
+      description: Retrieve tickets with search, filtering, sorting, and pagination
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search in title/description
+        in: query
+        name: search
+        type: string
+      - description: 'Filter by status: OPEN, IN_PROGRESS, RESOLVED, CLOSED'
+        in: query
+        name: status
+        type: string
+      - description: 'Filter by priority: LOW, MEDIUM, HIGH, CRITICAL'
+        in: query
+        name: priority
+        type: string
+      - description: 'Sort order: desc (default) or asc'
+        in: query
+        name: sort_by
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.PaginatedResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get tickets list
+      tags:
+      - Tickets
+    post:
+      consumes:
+      - application/json
+      description: Submit a new ticket (CUSTOMER or ADMIN)
+      parameters:
+      - description: Create Ticket Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Ticket'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new support ticket
+      tags:
+      - Tickets
+  /api/v1/tickets/{id}:
+    delete:
+      description: Delete ticket by ID (Customer for own ticket or Admin)
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete ticket by ID
+      tags:
+      - Tickets
+    get:
+      description: Get specific ticket details by UUID
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Ticket'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get ticket details by ID
+      tags:
+      - Tickets
+    put:
+      consumes:
+      - application/json
+      description: Update ticket parameters by ID
+      parameters:
+      - description: Ticket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Ticket Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTicketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.Ticket'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Update ticket details or status
+      tags:
+      - Tickets
+  /api/v1/users:
+    get:
+      description: Retrieve a list of all registered users (Admin/Support only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.User'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: List all users
+      tags:
+      - Users
+  /api/v1/users/{id}:
+    get:
+      description: Get specific user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update user details (Name, Role, Avatar)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update User Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.ApiResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ApiResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user by ID
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

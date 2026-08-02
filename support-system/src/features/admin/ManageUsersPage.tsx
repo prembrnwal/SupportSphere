@@ -21,9 +21,8 @@ import { useUsersList, useUpdateUserRole, useDeleteUser } from '@/hooks/useUsers
 import { initials, formatDate } from '@/lib/utils';
 import type { User, UserRole } from '@/types';
 
-const roleVariant: Record<UserRole, 'default' | 'info' | 'warning'> = {
+const roleVariant: Record<UserRole, 'default' | 'warning'> = {
   admin: 'warning',
-  agent: 'info',
   customer: 'default',
 };
 

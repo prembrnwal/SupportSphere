@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: support_postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: support_system_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: support_backend_api
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      APP_PORT: 8080
+      APP_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgrespassword
+      DB_NAME: support_system_db
+      DB_SSLMODE: disable
+      JWT_SECRET: super-secret-production-jwt-key-98765
+      JWT_EXPIRY_HOURS: 24
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

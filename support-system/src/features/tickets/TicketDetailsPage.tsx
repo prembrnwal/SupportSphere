@@ -28,7 +28,7 @@ export function TicketDetailsPage() {
   const addComment = useAddComment();
   const [comment, setComment] = useState('');
 
-  const canUpdateStatus = user?.role === 'admin' || user?.role === 'agent';
+  const canUpdateStatus = user?.role === 'admin';
 
   if (isLoading) return <Loader label="Loading ticket details..." />;
   if (isError || !ticket)

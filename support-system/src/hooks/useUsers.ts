@@ -18,7 +18,7 @@ export function useUsersList() {
 export function useAgents() {
   return useQuery({
     queryKey: ['agents'],
-    queryFn: () => delay(userStore.filter((u) => u.role === 'agent')),
+    queryFn: () => delay(userStore.filter((u) => u.role === 'admin')),
   });
 }
 

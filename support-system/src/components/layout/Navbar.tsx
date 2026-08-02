@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, Search, Sun, Moon, Menu } from 'lucide-react';
+import { Bell, Search, Sun, Moon, Menu, Home } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useUIStore } from '@/store/uiStore';
@@ -31,7 +31,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/70 dark:border-white/10 bg-white/80 dark:bg-[#0b0d12]/80 backdrop-blur-md px-4 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200/70 dark:border-white/10 bg-white/90 dark:bg-[#0b0d12]/90 backdrop-blur-md px-4 lg:px-6">
       <button className="lg:hidden text-slate-500" onClick={toggleSidebar}>
         <Menu className="h-5.5 w-5.5" />
       </button>
@@ -41,11 +41,20 @@ export function Navbar() {
         <input
           type="text"
           placeholder="Search tickets, users..."
-          className="h-9 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 pl-9 pr-3 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus-ring focus:border-brand-500 transition-colors"
+          className="h-9 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 pl-9 pr-3 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus-ring focus:border-teal-500 transition-colors"
         />
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        {/* Return to Home Button */}
+        <Link
+          to="/"
+          className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 hover:bg-teal-100 dark:hover:bg-teal-900/50 border border-teal-200 dark:border-teal-800 px-3 py-1.5 rounded-full transition-colors"
+        >
+          <Home className="h-3.5 w-3.5" />
+          <span>Home Page</span>
+        </Link>
+
         <button
           onClick={toggleTheme}
           className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/10 transition-colors"
@@ -63,7 +72,7 @@ export function Navbar() {
             <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#0b0d12]" />
           </button>
           {notifOpen && (
-            <div className="absolute right-0 mt-2 w-80 card-surface p-2 animate-fadeUp">
+            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#12141b] border border-slate-200/80 dark:border-white/10 rounded-2xl p-2 shadow-xl animate-fadeUp">
               <p className="px-2 py-1.5 text-sm font-semibold text-slate-900 dark:text-white">Notifications</p>
               <div className="max-h-64 overflow-y-auto">
                 {notifications.map((n) => (
@@ -79,17 +88,25 @@ export function Navbar() {
 
         <div className="relative" ref={profileRef}>
           <button onClick={() => setProfileOpen((v) => !v)} className="flex items-center gap-2 rounded-xl p-1 pr-2 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-xs font-semibold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 text-xs font-semibold text-white">
               {user ? initials(user.name) : 'U'}
             </div>
             <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-200">{user?.name}</span>
           </button>
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-52 card-surface p-2 animate-fadeUp">
+            <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-[#12141b] border border-slate-200/80 dark:border-white/10 rounded-2xl p-2 shadow-xl animate-fadeUp">
               <div className="px-2 py-2 border-b border-slate-100 dark:border-white/10 mb-1">
                 <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user?.name}</p>
                 <p className="text-xs text-slate-400 truncate">{user?.email}</p>
               </div>
+              <Link
+                to="/"
+                onClick={() => setProfileOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+              >
+                <Home className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                Home Page
+              </Link>
               <Link
                 to="/profile"
                 onClick={() => setProfileOpen(false)}

@@ -15,9 +15,14 @@ import {
   Star,
   ChevronDown,
   CheckCircle2,
+  LayoutDashboard,
+  LogOut,
+  User as UserIcon,
 } from 'lucide-react';
 import { testimonials, faqs } from '@/lib/dummyData';
 import { useThemeStore } from '@/store/themeStore';
+import { useAuthStore } from '@/store/authStore';
+import { initials } from '@/lib/utils';
 
 const features = [
   {
@@ -93,6 +98,9 @@ export function LandingPage() {
   const [mobileNav, setMobileNav] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const { theme, toggleTheme } = useThemeStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
+
+  const dashboardTarget = user?.role === 'admin' ? '/admin' : '/dashboard';
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0b0d12] text-slate-900 dark:text-slate-100 overflow-x-hidden antialiased">
@@ -127,16 +135,46 @@ export function LandingPage() {
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
-            <Link to="/login">
-              <button className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 transition-colors">
-                Sign in
-              </button>
-            </Link>
-            <Link to="/register">
-              <button className="text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-full transition-colors shadow-xs">
-                Start free
-              </button>
-            </Link>
+
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  to={dashboardTarget}
+                  className="flex items-center gap-2 rounded-full border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-950/40 px-3.5 py-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 hover:bg-teal-100 transition-colors"
+                >
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-white text-[10px]">
+                    {initials(user.name)}
+                  </div>
+                  <span>{user.name}</span>
+                </Link>
+                <Link to={dashboardTarget}>
+                  <button className="inline-flex items-center gap-1.5 text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-full transition-colors shadow-xs">
+                    <LayoutDashboard className="h-4 w-4" />
+                    Go to Dashboard
+                  </button>
+                </Link>
+                <button
+                  onClick={logout}
+                  title="Logout"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link to="/login">
+                  <button className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-2 transition-colors">
+                    Sign in
+                  </button>
+                </Link>
+                <Link to="/register">
+                  <button className="text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-full transition-colors shadow-xs">
+                    Start free
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
 
           <button className="md:hidden p-1 text-slate-700 dark:text-slate-300" onClick={() => setMobileNav((v) => !v)}>
@@ -150,14 +188,31 @@ export function LandingPage() {
             <a href="#why-us" onClick={() => setMobileNav(false)} className="block text-sm font-medium py-1">Why us</a>
             <a href="#testimonials" onClick={() => setMobileNav(false)} className="block text-sm font-medium py-1">Customers</a>
             <a href="#faq" onClick={() => setMobileNav(false)} className="block text-sm font-medium py-1">FAQ</a>
-            <div className="flex gap-2 pt-2">
-              <Link to="/login" className="flex-1">
-                <button className="w-full text-sm font-medium border border-slate-200 dark:border-white/20 rounded-full py-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Sign in</button>
-              </Link>
-              <Link to="/register" className="flex-1">
-                <button className="w-full text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-full py-2 transition-colors">Start free</button>
-              </Link>
-            </div>
+            
+            {isAuthenticated ? (
+              <div className="space-y-2 pt-2">
+                <Link to={dashboardTarget} onClick={() => setMobileNav(false)} className="block">
+                  <button className="w-full text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-full py-2.5 transition-colors flex items-center justify-center gap-2">
+                    <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
+                  </button>
+                </Link>
+                <button
+                  onClick={() => { logout(); setMobileNav(false); }}
+                  className="w-full text-sm font-medium text-red-600 border border-red-200 dark:border-red-900 rounded-full py-2 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" /> Sign out
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2 pt-2">
+                <Link to="/login" className="flex-1" onClick={() => setMobileNav(false)}>
+                  <button className="w-full text-sm font-medium border border-slate-200 dark:border-white/20 rounded-full py-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">Sign in</button>
+                </Link>
+                <Link to="/register" className="flex-1" onClick={() => setMobileNav(false)}>
+                  <button className="w-full text-sm font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded-full py-2 transition-colors">Start free</button>
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </header>
@@ -193,17 +248,36 @@ export function LandingPage() {
 
           {/* CTAs */}
           <div className="flex flex-wrap items-center gap-3.5 mb-10">
-            <Link to="/register">
-              <button className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-6 py-3 rounded-full transition-colors shadow-xs">
-                Create your workspace
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
-            <Link to="/login">
-              <button className="inline-flex items-center gap-2 border border-slate-300/80 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-medium px-6 py-3 rounded-full transition-colors">
-                Explore the demo
-              </button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to={dashboardTarget}>
+                  <button className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-6 py-3 rounded-full transition-colors shadow-xs">
+                    Go to Dashboard
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </Link>
+                <Link to="/profile">
+                  <button className="inline-flex items-center gap-2 border border-slate-300/80 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-medium px-6 py-3 rounded-full transition-colors">
+                    <UserIcon className="h-4 w-4" />
+                    My Account
+                  </button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/register">
+                  <button className="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-6 py-3 rounded-full transition-colors shadow-xs">
+                    Create your workspace
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </Link>
+                <Link to="/login">
+                  <button className="inline-flex items-center gap-2 border border-slate-300/80 dark:border-white/20 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 text-sm font-medium px-6 py-3 rounded-full transition-colors">
+                    Explore the demo
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Stats */}
@@ -222,9 +296,8 @@ export function LandingPage() {
             </div>
           </div>
 
-          {/* Live Queue Preview Card - Rounded 2xl with soft elevated shadow floating smoothly */}
+          {/* Live Queue Preview Card */}
           <div className="w-full bg-white dark:bg-[#141a1a] rounded-2xl shadow-xl shadow-teal-900/5 dark:shadow-black/40 border border-slate-200/80 dark:border-white/10 overflow-hidden relative">
-            {/* Card Header */}
             <div className="px-6 pt-5 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-white/10">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Live Queue</p>
@@ -236,7 +309,6 @@ export function LandingPage() {
               </div>
             </div>
 
-            {/* Tickets List */}
             <div className="p-4 space-y-2.5">
               {liveQueueTickets.map((ticket) => (
                 <div
@@ -258,17 +330,8 @@ export function LandingPage() {
                   </div>
                 </div>
               ))}
-
-              {/* Skeleton indicator */}
-              <div className="rounded-xl bg-slate-50/40 dark:bg-white/3 border border-dashed border-slate-200 dark:border-white/10 p-3.5">
-                <div className="space-y-2">
-                  <div className="h-2 w-16 bg-slate-200 dark:bg-white/10 rounded-full" />
-                  <div className="h-2 w-48 bg-slate-200 dark:bg-white/10 rounded-full" />
-                </div>
-              </div>
             </div>
 
-            {/* Soft inner bottom gradient fade */}
             <div className="h-6 bg-gradient-to-b from-transparent to-white dark:to-[#141a1a]" />
           </div>
 
@@ -407,11 +470,19 @@ export function LandingPage() {
             <p className="text-teal-100 mb-8 max-w-md mx-auto text-base">
               Join thousands of teams delivering faster, better customer support with Helpdesk.
             </p>
-            <Link to="/register">
-              <button className="inline-flex items-center gap-2 bg-white text-teal-800 hover:bg-teal-50 text-sm font-bold px-7 py-3.5 rounded-full transition-colors shadow-xs">
-                Get started for free <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to={dashboardTarget}>
+                <button className="inline-flex items-center gap-2 bg-white text-teal-800 hover:bg-teal-50 text-sm font-bold px-7 py-3.5 rounded-full transition-colors shadow-xs">
+                  <LayoutDashboard className="h-4 w-4" /> Go to Dashboard
+                </button>
+              </Link>
+            ) : (
+              <Link to="/register">
+                <button className="inline-flex items-center gap-2 bg-white text-teal-800 hover:bg-teal-50 text-sm font-bold px-7 py-3.5 rounded-full transition-colors shadow-xs">
+                  Get started for free <ArrowRight className="h-4 w-4" />
+                </button>
+              </Link>
+            )}
           </div>
         </div>
       </section>

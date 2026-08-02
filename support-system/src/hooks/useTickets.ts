@@ -1,25 +1,86 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/axios';
 import { dummyTickets } from '@/lib/dummyData';
 import type { Ticket, TicketCategory, TicketPriority, TicketStatus } from '@/types';
 
-// In-memory store simulating a backend so creates/updates persist during the session
+// In-memory store fallback simulating a backend if server is offline
 let ticketStore: Ticket[] = [...dummyTickets];
 
-function delay<T>(data: T, ms = 500): Promise<T> {
+function delay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
+}
+
+function mapBackendTicket(raw: any): Ticket {
+  const statusRaw = String(raw.status || 'OPEN').toLowerCase();
+  const priorityRaw = String(raw.priority || 'MEDIUM').toLowerCase();
+
+  let status: TicketStatus = 'open';
+  if (statusRaw === 'in_progress') status = 'in_progress';
+  if (statusRaw === 'resolved' || statusRaw === 'closed') status = 'closed';
+
+  let priority: TicketPriority = 'medium';
+  if (priorityRaw === 'low') priority = 'low';
+  if (priorityRaw === 'high') priority = 'high';
+  if (priorityRaw === 'critical' || priorityRaw === 'urgent') priority = 'urgent';
+
+  return {
+    id: raw.id,
+    ticketNumber: `TCK-${raw.id.slice(0, 6).toUpperCase()}`,
+    title: raw.title,
+    description: raw.description,
+    category: (raw.category || 'general') as TicketCategory,
+    priority,
+    status,
+    createdBy: raw.creator?.name || raw.creator?.email || 'Customer',
+    assignedAgent: raw.assignee?.name || raw.assignee?.email || undefined,
+    createdAt: raw.created_at || new Date().toISOString(),
+    updatedAt: raw.updated_at || new Date().toISOString(),
+    timeline: [
+      { id: 'e1', label: 'Ticket registered in database', timestamp: raw.created_at || new Date().toISOString(), actor: raw.creator?.name || 'System' }
+    ],
+    comments: [],
+  };
 }
 
 export function useTicketsList() {
   return useQuery({
     queryKey: ['tickets'],
-    queryFn: () => delay([...ticketStore].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))),
+    queryFn: async () => {
+      try {
+        const res = await api.get('/api/v1/tickets');
+        if (res.data?.success && res.data?.data) {
+          const items = res.data.data.items || res.data.data;
+          if (Array.isArray(items)) {
+            const mapped = items.map(mapBackendTicket);
+            // Combine with local session store for seamless view
+            const dbIds = new Set(mapped.map((t) => t.id));
+            const merged = [...mapped, ...ticketStore.filter((t) => !dbIds.has(t.id))];
+            return merged.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+          }
+        }
+      } catch {
+        // Fallback to local memory if backend is unreachable
+      }
+      return delay([...ticketStore].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
+    },
   });
 }
 
 export function useTicket(id: string | undefined) {
   return useQuery({
     queryKey: ['ticket', id],
-    queryFn: () => delay(ticketStore.find((t) => t.id === id) || null),
+    queryFn: async () => {
+      if (!id) return null;
+      try {
+        const res = await api.get(`/api/v1/tickets/${id}`);
+        if (res.data?.success && res.data?.data) {
+          return mapBackendTicket(res.data.data);
+        }
+      } catch {
+        // Fallback to memory
+      }
+      return delay(ticketStore.find((t) => t.id === id) || null);
+    },
     enabled: !!id,
   });
 }
@@ -27,13 +88,32 @@ export function useTicket(id: string | undefined) {
 export function useCreateTicket() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
+    mutationFn: async (input: {
       title: string;
       description: string;
       category: TicketCategory;
       priority: TicketPriority;
       createdBy: string;
     }) => {
+      try {
+        const backendPriority = input.priority === 'urgent' ? 'CRITICAL' : input.priority.toUpperCase();
+        const res = await api.post('/api/v1/tickets', {
+          title: input.title,
+          description: input.description,
+          category: input.category,
+          priority: backendPriority,
+        });
+
+        if (res.data?.success && res.data?.data) {
+          const ticket = mapBackendTicket(res.data.data);
+          ticketStore = [ticket, ...ticketStore];
+          return ticket;
+        }
+      } catch {
+        // Fallback if backend API is offline
+      }
+
+      // Memory fallback
       const newTicket: Ticket = {
         id: 't' + (ticketStore.length + 1) + '-' + Date.now(),
         ticketNumber: `TCK-${1000 + ticketStore.length}`,
@@ -49,7 +129,7 @@ export function useCreateTicket() {
         comments: [],
       };
       ticketStore = [newTicket, ...ticketStore];
-      return delay(newTicket, 700);
+      return delay(newTicket, 500);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tickets'] });
@@ -60,7 +140,14 @@ export function useCreateTicket() {
 export function useUpdateTicketStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status, actor }: { id: string; status: TicketStatus; actor: string }) => {
+    mutationFn: async ({ id, status, actor }: { id: string; status: TicketStatus; actor: string }) => {
+      try {
+        const backendStatus = status === 'closed' ? 'RESOLVED' : status.toUpperCase();
+        await api.put(`/api/v1/tickets/${id}`, { status: backendStatus });
+      } catch {
+        // Fallback
+      }
+
       ticketStore = ticketStore.map((t) =>
         t.id === id
           ? {
@@ -74,7 +161,7 @@ export function useUpdateTicketStatus() {
             }
           : t
       );
-      return delay(ticketStore.find((t) => t.id === id), 500);
+      return delay(ticketStore.find((t) => t.id === id), 400);
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['tickets'] });
@@ -86,7 +173,7 @@ export function useUpdateTicketStatus() {
 export function useAssignTicket() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, agent }: { id: string; agent: string }) => {
+    mutationFn: async ({ id, agent }: { id: string; agent: string }) => {
       ticketStore = ticketStore.map((t) =>
         t.id === id
           ? {
@@ -101,7 +188,7 @@ export function useAssignTicket() {
             }
           : t
       );
-      return delay(ticketStore.find((t) => t.id === id), 600);
+      return delay(ticketStore.find((t) => t.id === id), 400);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tickets'] });
@@ -112,7 +199,7 @@ export function useAssignTicket() {
 export function useAddComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, message, author, authorRole }: { id: string; message: string; author: string; authorRole: Ticket['comments'][0]['authorRole'] }) => {
+    mutationFn: async ({ id, message, author, authorRole }: { id: string; message: string; author: string; authorRole: Ticket['comments'][0]['authorRole'] }) => {
       ticketStore = ticketStore.map((t) =>
         t.id === id
           ? {
