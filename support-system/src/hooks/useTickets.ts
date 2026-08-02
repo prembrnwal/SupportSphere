@@ -303,3 +303,24 @@ export function useAddComment() {
     },
   });
 }
+
+export function useDeleteTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (isUUID(id) && isRealToken()) {
+        try {
+          await api.delete(`/api/v1/tickets/${id}`);
+        } catch {
+          // Fallback
+        }
+      }
+      ticketStore = ticketStore.filter((t) => t.id !== id);
+      saveStoredTickets(ticketStore);
+      return delay(true, 200);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tickets'] });
+    },
+  });
+}

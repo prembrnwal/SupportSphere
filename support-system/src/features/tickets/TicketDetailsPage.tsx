@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, User as UserIcon, Send, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Clock, User as UserIcon, Send, Trash2 } from 'lucide-react';
 import {
   Card,
   Button,
@@ -12,8 +12,9 @@ import {
   PriorityBadge,
   Loader,
   ErrorState,
+  ConfirmDialog,
 } from '@/components/ui';
-import { useTicket, useUpdateTicketStatus, useAddComment } from '@/hooks/useTickets';
+import { useTicket, useUpdateTicketStatus, useAddComment, useDeleteTicket } from '@/hooks/useTickets';
 import { useAuthStore } from '@/store/authStore';
 import { CATEGORY_LABELS } from '@/lib/dummyData';
 import { formatDateTime, initials } from '@/lib/utils';
@@ -26,9 +27,11 @@ export function TicketDetailsPage() {
   const { data: ticket, isLoading, isError, refetch } = useTicket(id);
   const updateStatus = useUpdateTicketStatus();
   const addComment = useAddComment();
+  const deleteTicket = useDeleteTicket();
   const [comment, setComment] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  const canUpdateStatus = user?.role === 'admin';
+  const canManageTicket = user?.role === 'admin';
 
   if (isLoading) return <Loader label="Loading ticket details..." />;
   if (isError || !ticket)
@@ -59,14 +62,36 @@ export function TicketDetailsPage() {
     }
   };
 
+  const handleDeleteTicket = async () => {
+    try {
+      await deleteTicket.mutateAsync(ticket.id);
+      toast.success(`Ticket ${ticket.ticketNumber} deleted`);
+      navigate(user?.role === 'admin' ? '/admin' : '/dashboard');
+    } catch {
+      toast.error('Failed to delete ticket');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+
+        {canManageTicket && (
+          <button
+            onClick={() => setDeleteModalOpen(true)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete Ticket
+          </button>
+        )}
+      </div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <Card>
@@ -86,7 +111,7 @@ export function TicketDetailsPage() {
           <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-white/10 text-sm">
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <span className="font-medium text-slate-700 dark:text-slate-300">Category:</span>
-              {CATEGORY_LABELS[ticket.category]}
+              {CATEGORY_LABELS[ticket.category] || ticket.category}
             </div>
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <span className="font-medium text-slate-700 dark:text-slate-300">Created by:</span>
@@ -98,13 +123,13 @@ export function TicketDetailsPage() {
             </div>
             <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
               <span className="font-medium text-slate-700 dark:text-slate-300">Assigned Agent:</span>
-              {ticket.assignedAgent || 'Unassigned'}
+              {ticket.assignedAgent || 'System Admin'}
             </div>
           </div>
 
-          {canUpdateStatus && (
+          {canManageTicket && (
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-white/10">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Update Status</p>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Update Ticket Status</p>
               <div className="flex flex-col sm:flex-row gap-3 max-w-sm">
                 <Select
                   value={ticket.status}
@@ -112,7 +137,7 @@ export function TicketDetailsPage() {
                   options={[
                     { value: 'open', label: 'Open' },
                     { value: 'in_progress', label: 'In Progress' },
-                    { value: 'closed', label: 'Closed' },
+                    { value: 'closed', label: 'Closed / Resolved' },
                   ]}
                 />
               </div>
@@ -128,7 +153,7 @@ export function TicketDetailsPage() {
           <div className="absolute left-[7px] top-1 bottom-1 w-px bg-slate-200 dark:bg-white/10" />
           {ticket.timeline.map((event) => (
             <div key={event.id} className="relative">
-              <div className="absolute -left-6 top-0.5 h-3.5 w-3.5 rounded-full bg-brand-500 ring-4 ring-brand-100 dark:ring-brand-500/20" />
+              <div className="absolute -left-6 top-0.5 h-3.5 w-3.5 rounded-full bg-teal-500 ring-4 ring-teal-100 dark:ring-teal-500/20" />
               <p className="text-sm font-medium text-slate-900 dark:text-white">{event.label}</p>
               <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                 <Clock className="h-3 w-3" /> {formatDateTime(event.timestamp)} · {event.actor}
@@ -148,7 +173,7 @@ export function TicketDetailsPage() {
           <div className="space-y-4 mb-5">
             {ticket.comments.map((c) => (
               <div key={c.id} className="flex gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 text-xs font-semibold">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-300 text-xs font-semibold">
                   {initials(c.author)}
                 </div>
                 <div className="flex-1">
@@ -167,7 +192,7 @@ export function TicketDetailsPage() {
         )}
 
         <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-white/10">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white text-xs font-semibold">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white text-xs font-semibold">
             {user ? initials(user.name) : <UserIcon className="h-4 w-4" />}
           </div>
           <div className="flex-1 space-y-2">
@@ -185,6 +210,17 @@ export function TicketDetailsPage() {
           </div>
         </div>
       </Card>
+
+      {/* Delete Ticket Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteTicket}
+        title="Delete Ticket"
+        description={`Are you sure you want to delete ticket ${ticket.ticketNumber}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

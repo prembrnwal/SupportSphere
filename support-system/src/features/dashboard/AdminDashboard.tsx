@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, Ticket as TicketIcon, Inbox, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import { Users, Ticket as TicketIcon, Inbox, Loader2, CheckCircle2, ArrowUpRight, BarChart2 } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -17,36 +17,46 @@ import {
 import { Card, CardSkeleton, Table, THead, TBody, TR, TH, TD, StatusBadge, PriorityBadge, ErrorState, TableRowSkeleton } from '@/components/ui';
 import { useTicketsList } from '@/hooks/useTickets';
 import { useUsersList } from '@/hooks/useUsers';
-import { CATEGORY_LABELS } from '@/lib/dummyData';
+import { CATEGORY_LABELS, PRIORITY_LABELS } from '@/lib/dummyData';
 import { formatDate } from '@/lib/utils';
+import type { TicketPriority } from '@/types';
 
-const COLORS = ['#6366f1', '#38bdf8', '#f59e0b', '#ef4444', '#10b981', '#a78bfa'];
+const COLORS = ['#0d9488', '#0284c7', '#f59e0b', '#e11d48', '#8b5cf6', '#10b981'];
 
 export function AdminDashboard() {
   const { data: tickets, isLoading, isError, refetch } = useTicketsList();
   const { data: users, isLoading: usersLoading } = useUsersList();
 
-  const counts = {
-    total: tickets?.length ?? 0,
-    open: tickets?.filter((t) => t.status === 'open').length ?? 0,
-    closed: tickets?.filter((t) => t.status === 'closed').length ?? 0,
-  };
+  const totalTickets = tickets?.length ?? 0;
+  const openCount = tickets?.filter((t) => t.status === 'open').length ?? 0;
+  const inProgressCount = tickets?.filter((t) => t.status === 'in_progress').length ?? 0;
+  const closedCount = tickets?.filter((t) => t.status === 'closed').length ?? 0;
 
+  // Accurate Live Category Distribution Calculation
   const categoryData = tickets
     ? Object.entries(
         tickets.reduce<Record<string, number>>((acc, t) => {
-          const label = CATEGORY_LABELS[t.category];
+          const label = CATEGORY_LABELS[t.category] || t.category;
           acc[label] = (acc[label] || 0) + 1;
           return acc;
         }, {})
       ).map(([name, value]) => ({ name, value }))
     : [];
 
+  // Accurate Live Priority Distribution Calculation
+  const priorityData = tickets
+    ? (['low', 'medium', 'high', 'urgent'] as TicketPriority[]).map((p) => ({
+        name: PRIORITY_LABELS[p] || p,
+        value: tickets.filter((t) => t.priority === p).length,
+      }))
+    : [];
+
+  // Accurate Live Status Distribution Calculation
   const statusData = tickets
     ? [
-        { name: 'Open', value: tickets.filter((t) => t.status === 'open').length },
-        { name: 'In Progress', value: tickets.filter((t) => t.status === 'in_progress').length },
-        { name: 'Closed', value: tickets.filter((t) => t.status === 'closed').length },
+        { name: 'Open', value: openCount },
+        { name: 'In Progress', value: inProgressCount },
+        { name: 'Closed', value: closedCount },
       ]
     : [];
 
@@ -55,35 +65,36 @@ export function AdminDashboard() {
     : [];
 
   const statCards = [
-    { label: 'Total Users', value: users?.length ?? 0, icon: Users, color: 'text-violet-500 bg-violet-50 dark:bg-violet-500/10', loading: usersLoading },
-    { label: 'Total Tickets', value: counts.total, icon: TicketIcon, color: 'text-brand-500 bg-brand-50 dark:bg-brand-500/10', loading: isLoading },
-    { label: 'Open', value: counts.open, icon: Inbox, color: 'text-sky-500 bg-sky-50 dark:bg-sky-500/10', loading: isLoading },
-    { label: 'Closed', value: counts.closed, icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10', loading: isLoading },
+    { label: 'Total Users', value: users?.length ?? 0, icon: Users, color: 'text-teal-600 bg-teal-50 dark:bg-teal-950/40', loading: usersLoading },
+    { label: 'Total Tickets', value: totalTickets, icon: TicketIcon, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40', loading: isLoading },
+    { label: 'Open Tickets', value: openCount, icon: Inbox, color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/40', loading: isLoading },
+    { label: 'In Progress', value: inProgressCount, icon: Loader2, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40', loading: isLoading },
+    { label: 'Closed Tickets', value: closedCount, icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40', loading: isLoading },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Admin Analytics & Operations</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Overview of support operations across your organization.
+          Real-time analytics, status breakdown, and ticket management dashboard.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {statCards.map((s, i) =>
           s.loading ? (
             <CardSkeleton key={s.label} />
           ) : (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.05 }}>
+            <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04 }}>
               <Card className="hover:-translate-y-0.5 transition-transform duration-200">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{s.label}</p>
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.color}`}>
-                    <s.icon className="h-4.5 w-4.5" />
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{s.label}</p>
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${s.color}`}>
+                    <s.icon className="h-4 w-4" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold mt-3 text-slate-900 dark:text-white">{s.value}</p>
+                <p className="text-3xl font-extrabold mt-3 text-slate-900 dark:text-white">{s.value}</p>
               </Card>
             </motion.div>
           )
@@ -93,16 +104,46 @@ export function AdminDashboard() {
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : (
-        <div className="grid lg:grid-cols-2 gap-5">
-          <Card>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">Tickets by Category</h2>
+        <div className="grid lg:grid-cols-3 gap-5">
+          
+          {/* Priority Distribution Bar Chart */}
+          <Card className="lg:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart2 className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Tickets by Priority</h2>
+            </div>
+            {isLoading ? (
+              <div className="skeleton h-64 w-full" />
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={priorityData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-white/10" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }}
+                  />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    <Cell fill="#10b981" />
+                    <Cell fill="#0284c7" />
+                    <Cell fill="#f59e0b" />
+                    <Cell fill="#e11d48" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+
+          {/* Category Distribution Bar Chart */}
+          <Card className="lg:col-span-1">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4">Tickets by Category</h2>
             {isLoading ? (
               <div className="skeleton h-64 w-full" />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={categoryData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-white/10" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }}
@@ -117,19 +158,20 @@ export function AdminDashboard() {
             )}
           </Card>
 
-          <Card>
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-4">Tickets by Status</h2>
+          {/* Status Breakdown Pie Chart */}
+          <Card className="lg:col-span-1">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4">Tickets Status Breakdown</h2>
             {isLoading ? (
               <div className="skeleton h-64 w-full" />
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
-                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={3}>
-                    {statusData.map((_, i) => (
-                      <Cell key={i} fill={[COLORS[1], COLORS[2], COLORS[4]][i]} />
-                    ))}
+                  <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={4}>
+                    <Cell fill="#0284c7" />
+                    <Cell fill="#f59e0b" />
+                    <Cell fill="#10b981" />
                   </Pie>
-                  <Legend verticalAlign="bottom" height={30} iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: 12 }} />
                   <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: 13 }} />
                 </PieChart>
               </ResponsiveContainer>
@@ -138,11 +180,12 @@ export function AdminDashboard() {
         </div>
       )}
 
+      {/* Live Recent Tickets Table */}
       <Card>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold text-slate-900 dark:text-white">Recent Tickets</h2>
-          <Link to="/admin/assign" className="text-sm text-brand-600 dark:text-brand-400 font-medium hover:underline flex items-center gap-1">
-            Assign tickets <ArrowUpRight className="h-3.5 w-3.5" />
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">Live System Tickets</h2>
+          <Link to="/tickets" className="text-sm text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center gap-1">
+            View All Tickets <ArrowUpRight className="h-4 w-4" />
           </Link>
         </div>
         <Table>
@@ -162,7 +205,7 @@ export function AdminDashboard() {
               : recentTickets.map((t) => (
                   <TR key={t.id}>
                     <TD>
-                      <Link to={`/tickets/${t.id}`} className="font-mono text-xs text-brand-600 dark:text-brand-400 hover:underline">
+                      <Link to={`/tickets/${t.id}`} className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline">
                         {t.ticketNumber}
                       </Link>
                     </TD>
