@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Search, LayoutGrid, List, PlusCircle, Trash2, CheckCircle2 } from 'lucide-react';
 import {
@@ -30,6 +30,7 @@ import type { TicketStatus, TicketPriority, Ticket } from '@/types';
 const PAGE_SIZE = 8;
 
 export function MyTicketsPage() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const { data: allTickets, isLoading, isError, refetch } = useTicketsList();
@@ -218,16 +219,20 @@ export function MyTicketsPage() {
           </THead>
           <TBody>
             {paginated.map((t) => (
-              <TR key={t.id}>
+              <TR
+                key={t.id}
+                onClick={() => navigate(`/tickets/${t.id}`)}
+                className="cursor-pointer hover:bg-teal-50/60 dark:hover:bg-white/[0.04] transition-colors"
+              >
                 <TD>
-                  <Link to={`/tickets/${t.id}`} className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline">
+                  <span className="font-mono text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline">
                     {t.ticketNumber}
-                  </Link>
+                  </span>
                 </TD>
                 <TD>
-                  <Link to={`/tickets/${t.id}`} className="font-medium text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+                  <span className="font-medium text-slate-900 dark:text-white hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
                     {t.title}
-                  </Link>
+                  </span>
                 </TD>
                 <TD>{CATEGORY_LABELS[t.category] || t.category}</TD>
                 <TD>
@@ -239,11 +244,14 @@ export function MyTicketsPage() {
                 <TD className="text-slate-400">{formatDate(t.createdAt)}</TD>
                 {isAdmin && (
                   <TD className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                       {t.status !== 'closed' && (
                         <button
                           type="button"
-                          onClick={() => handleMarkFinished(t)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMarkFinished(t);
+                          }}
                           title="Mark Finished"
                           className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg transition-colors"
                         >
@@ -253,7 +261,10 @@ export function MyTicketsPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => setTicketToDelete(t)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTicketToDelete(t);
+                        }}
                         title="Delete Ticket"
                         className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-lg transition-colors"
                       >
