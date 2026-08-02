@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-[#0b0d12] dark:text-slate-100 font-sans antialiased transition-colors duration-300;
+  }
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 dark:bg-white/5 backdrop-blur-md border border-white/60 dark:border-white/10;
+  }
+  .card-surface {
+    @apply bg-white dark:bg-[#12141b] border border-slate-200/70 dark:border-white/10 rounded-2xl shadow-soft;
+  }
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-[#0b0d12];
+  }
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200 dark:bg-white/10 rounded-md;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-white/15 rounded-full;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
