@@ -3,11 +3,47 @@ import { api } from '@/lib/axios';
 import { dummyTickets } from '@/lib/dummyData';
 import type { Ticket, TicketCategory, TicketPriority, TicketStatus } from '@/types';
 
-// In-memory store fallback simulating a backend if server is offline
-let ticketStore: Ticket[] = [...dummyTickets];
+const STORAGE_KEY = 'sh_local_tickets';
 
-function delay<T>(data: T, ms = 400): Promise<T> {
+function isUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+function getStoredTickets(): Ticket[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Merge with initial dummy tickets to preserve default mock tickets
+        const storedIds = new Set(parsed.map((t: Ticket) => t.id));
+        const missingDummies = dummyTickets.filter((t) => !storedIds.has(t.id));
+        return [...parsed, ...missingDummies];
+      }
+    }
+  } catch {
+    // Ignore parse error
+  }
+  return [...dummyTickets];
+}
+
+function saveStoredTickets(tickets: Ticket[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+  } catch {
+    // Ignore storage quota error
+  }
+}
+
+let ticketStore: Ticket[] = getStoredTickets();
+
+function delay<T>(data: T, ms = 200): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
+}
+
+function isRealToken(): boolean {
+  const token = localStorage.getItem('sh_token');
+  return !!token && !token.startsWith('demo-token-');
 }
 
 function mapBackendTicket(raw: any): Ticket {
@@ -36,7 +72,7 @@ function mapBackendTicket(raw: any): Ticket {
     createdAt: raw.created_at || new Date().toISOString(),
     updatedAt: raw.updated_at || new Date().toISOString(),
     timeline: [
-      { id: 'e1', label: 'Ticket registered in database', timestamp: raw.created_at || new Date().toISOString(), actor: raw.creator?.name || 'System' }
+      { id: 'e1', label: 'Ticket registered in system', timestamp: raw.created_at || new Date().toISOString(), actor: raw.creator?.name || 'System' }
     ],
     comments: [],
   };
@@ -46,20 +82,23 @@ export function useTicketsList() {
   return useQuery({
     queryKey: ['tickets'],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api/v1/tickets');
-        if (res.data?.success && res.data?.data) {
-          const items = res.data.data.items || res.data.data;
-          if (Array.isArray(items)) {
-            const mapped = items.map(mapBackendTicket);
-            // Combine with local session store for seamless view
-            const dbIds = new Set(mapped.map((t) => t.id));
-            const merged = [...mapped, ...ticketStore.filter((t) => !dbIds.has(t.id))];
-            return merged.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+      if (isRealToken()) {
+        try {
+          const res = await api.get('/api/v1/tickets');
+          if (res.data?.success && res.data?.data) {
+            const items = res.data.data.items || res.data.data;
+            if (Array.isArray(items)) {
+              const mapped = items.map(mapBackendTicket);
+              const dbIds = new Set(mapped.map((t) => t.id));
+              const merged = [...mapped, ...ticketStore.filter((t) => !dbIds.has(t.id))];
+              saveStoredTickets(merged);
+              ticketStore = merged;
+              return merged.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+            }
           }
+        } catch {
+          // Fallback to local memory if backend is unreachable
         }
-      } catch {
-        // Fallback to local memory if backend is unreachable
       }
       return delay([...ticketStore].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)));
     },
@@ -71,15 +110,52 @@ export function useTicket(id: string | undefined) {
     queryKey: ['ticket', id],
     queryFn: async () => {
       if (!id) return null;
-      try {
-        const res = await api.get(`/api/v1/tickets/${id}`);
-        if (res.data?.success && res.data?.data) {
-          return mapBackendTicket(res.data.data);
+
+      // 1. Check local stored tickets first
+      const localMatch = ticketStore.find((t) => t.id === id);
+      if (localMatch) return localMatch;
+
+      // 2. Query backend ONLY if id is a valid UUID and user has a real JWT token
+      if (isUUID(id) && isRealToken()) {
+        try {
+          const res = await api.get(`/api/v1/tickets/${id}`);
+          if (res.data?.success && res.data?.data) {
+            const mapped = mapBackendTicket(res.data.data);
+            ticketStore = ticketStore.map((t) => (t.id === id ? mapped : t));
+            saveStoredTickets(ticketStore);
+            return mapped;
+          }
+        } catch {
+          // Ignore network / auth error and fallback below
         }
-      } catch {
-        // Fallback to memory
       }
-      return delay(ticketStore.find((t) => t.id === id) || null);
+
+      // 3. Fallback: search in initial dummy tickets or return placeholder
+      const dummyMatch = dummyTickets.find((t) => t.id === id);
+      if (dummyMatch) return dummyMatch;
+
+      // If ticket ID was generated during a previous session (e.g. t19-...), generate dynamic ticket representation
+      if (id.startsWith('t')) {
+        const fallbackTicket: Ticket = {
+          id,
+          ticketNumber: `TCK-${id.slice(1, 6).toUpperCase()}`,
+          title: 'Support Ticket',
+          description: 'Ticket created in local session.',
+          category: 'general',
+          priority: 'medium',
+          status: 'open',
+          createdBy: 'Customer',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          timeline: [{ id: 'e1', label: 'Ticket created', timestamp: new Date().toISOString(), actor: 'Customer' }],
+          comments: [],
+        };
+        ticketStore = [fallbackTicket, ...ticketStore];
+        saveStoredTickets(ticketStore);
+        return fallbackTicket;
+      }
+
+      return null;
     },
     enabled: !!id,
   });
@@ -95,25 +171,28 @@ export function useCreateTicket() {
       priority: TicketPriority;
       createdBy: string;
     }) => {
-      try {
-        const backendPriority = input.priority === 'urgent' ? 'CRITICAL' : input.priority.toUpperCase();
-        const res = await api.post('/api/v1/tickets', {
-          title: input.title,
-          description: input.description,
-          category: input.category,
-          priority: backendPriority,
-        });
+      if (isRealToken()) {
+        try {
+          const backendPriority = input.priority === 'urgent' ? 'CRITICAL' : input.priority.toUpperCase();
+          const res = await api.post('/api/v1/tickets', {
+            title: input.title,
+            description: input.description,
+            category: input.category,
+            priority: backendPriority,
+          });
 
-        if (res.data?.success && res.data?.data) {
-          const ticket = mapBackendTicket(res.data.data);
-          ticketStore = [ticket, ...ticketStore];
-          return ticket;
+          if (res.data?.success && res.data?.data) {
+            const ticket = mapBackendTicket(res.data.data);
+            ticketStore = [ticket, ...ticketStore];
+            saveStoredTickets(ticketStore);
+            return ticket;
+          }
+        } catch {
+          // Fallback if backend API is offline
         }
-      } catch {
-        // Fallback if backend API is offline
       }
 
-      // Memory fallback
+      // Memory & LocalStorage fallback
       const newTicket: Ticket = {
         id: 't' + (ticketStore.length + 1) + '-' + Date.now(),
         ticketNumber: `TCK-${1000 + ticketStore.length}`,
@@ -129,7 +208,8 @@ export function useCreateTicket() {
         comments: [],
       };
       ticketStore = [newTicket, ...ticketStore];
-      return delay(newTicket, 500);
+      saveStoredTickets(ticketStore);
+      return delay(newTicket, 200);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tickets'] });
@@ -141,11 +221,13 @@ export function useUpdateTicketStatus() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, status, actor }: { id: string; status: TicketStatus; actor: string }) => {
-      try {
-        const backendStatus = status === 'closed' ? 'RESOLVED' : status.toUpperCase();
-        await api.put(`/api/v1/tickets/${id}`, { status: backendStatus });
-      } catch {
-        // Fallback
+      if (isUUID(id) && isRealToken()) {
+        try {
+          const backendStatus = status === 'closed' ? 'RESOLVED' : status.toUpperCase();
+          await api.put(`/api/v1/tickets/${id}`, { status: backendStatus });
+        } catch {
+          // Fallback
+        }
       }
 
       ticketStore = ticketStore.map((t) =>
@@ -161,7 +243,8 @@ export function useUpdateTicketStatus() {
             }
           : t
       );
-      return delay(ticketStore.find((t) => t.id === id), 400);
+      saveStoredTickets(ticketStore);
+      return delay(ticketStore.find((t) => t.id === id), 200);
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['tickets'] });
@@ -188,7 +271,8 @@ export function useAssignTicket() {
             }
           : t
       );
-      return delay(ticketStore.find((t) => t.id === id), 400);
+      saveStoredTickets(ticketStore);
+      return delay(ticketStore.find((t) => t.id === id), 200);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tickets'] });
@@ -211,7 +295,8 @@ export function useAddComment() {
             }
           : t
       );
-      return delay(ticketStore.find((t) => t.id === id), 400);
+      saveStoredTickets(ticketStore);
+      return delay(ticketStore.find((t) => t.id === id), 200);
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['ticket', vars.id] });
