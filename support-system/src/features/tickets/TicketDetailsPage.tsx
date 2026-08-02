@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, User as UserIcon, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, User as UserIcon, Send, Trash2, CheckCircle2 } from 'lucide-react';
 import {
   Card,
   Button,
@@ -46,6 +46,15 @@ export function TicketDetailsPage() {
     }
   };
 
+  const handleMarkFinished = async () => {
+    try {
+      await updateStatus.mutateAsync({ id: ticket.id, status: 'closed', actor: user?.name || 'Admin' });
+      toast.success(`Ticket ${ticket.ticketNumber} marked as finished`);
+    } catch {
+      toast.error('Failed to mark ticket as finished');
+    }
+  };
+
   const handleAddComment = async () => {
     if (!comment.trim()) return;
     try {
@@ -83,13 +92,26 @@ export function TicketDetailsPage() {
         </button>
 
         {canManageTicket && (
-          <button
-            onClick={() => setDeleteModalOpen(true)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl transition-colors"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete Ticket
-          </button>
+          <div className="flex items-center gap-2">
+            {ticket.status !== 'closed' && (
+              <button
+                type="button"
+                onClick={handleMarkFinished}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl transition-colors shadow-xs"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Mark as Finished
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setDeleteModalOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-800 px-3 py-1.5 rounded-xl transition-colors shadow-xs"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete Ticket
+            </button>
+          </div>
         )}
       </div>
 
@@ -137,7 +159,7 @@ export function TicketDetailsPage() {
                   options={[
                     { value: 'open', label: 'Open' },
                     { value: 'in_progress', label: 'In Progress' },
-                    { value: 'closed', label: 'Closed / Resolved' },
+                    { value: 'closed', label: 'Closed / Finished' },
                   ]}
                 />
               </div>
