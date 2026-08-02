@@ -1,4 +1,4 @@
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
@@ -9,21 +9,31 @@ import { Card, Input, Select, Textarea, Button } from '@/components/ui';
 import { useCreateTicket } from '@/hooks/useTickets';
 import { useAuthStore } from '@/store/authStore';
 import { CATEGORY_LABELS, PRIORITY_LABELS } from '@/lib/dummyData';
+import type { TicketCategory, TicketPriority } from '@/types';
 
 const schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(120),
   description: z.string().min(20, 'Please provide at least 20 characters of detail'),
-  category: z.enum(['technical', 'billing', 'account', 'feature_request', 'bug', 'general'], {
-    errorMap: () => ({ message: 'Please select a category' }),
-  }),
-  priority: z.enum(['low', 'medium', 'high', 'urgent'], {
-    errorMap: () => ({ message: 'Please select a priority' }),
-  }),
+  category: z.string().min(1, 'Please select a category'),
+  priority: z.string().min(1, 'Please select a priority'),
 });
-type FormData = z.infer<typeof schema>;
 
-const categoryOptions = Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label }));
-const priorityOptions = Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label }));
+type FormData = {
+  title: string;
+  description: string;
+  category: TicketCategory;
+  priority: TicketPriority;
+};
+
+const categoryOptions = [
+  { value: '', label: 'Select category...' },
+  ...Object.entries(CATEGORY_LABELS).map(([value, label]) => ({ value, label })),
+];
+
+const priorityOptions = [
+  { value: '', label: 'Select priority...' },
+  ...Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label })),
+];
 
 export function CreateTicketPage() {
   const navigate = useNavigate();
@@ -33,9 +43,16 @@ export function CreateTicketPage() {
   const {
     register,
     handleSubmit,
-    control,
     formState: { errors },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: '',
+      description: '',
+      category: 'general',
+      priority: 'medium',
+    },
+  });
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -76,31 +93,17 @@ export function CreateTicketPage() {
             />
 
             <div className="grid sm:grid-cols-2 gap-5">
-              <Controller
-                control={control}
-                name="category"
-                render={({ field }) => (
-                  <Select
-                    label="Category"
-                    placeholder="Select category"
-                    options={categoryOptions}
-                    error={errors.category?.message}
-                    {...field}
-                  />
-                )}
+              <Select
+                label="Category"
+                options={categoryOptions}
+                error={errors.category?.message}
+                {...register('category')}
               />
-              <Controller
-                control={control}
-                name="priority"
-                render={({ field }) => (
-                  <Select
-                    label="Priority"
-                    placeholder="Select priority"
-                    options={priorityOptions}
-                    error={errors.priority?.message}
-                    {...field}
-                  />
-                )}
+              <Select
+                label="Priority"
+                options={priorityOptions}
+                error={errors.priority?.message}
+                {...register('priority')}
               />
             </div>
 
