@@ -4,7 +4,7 @@ import type { User, UserRole } from '@/types';
 
 let userStore: User[] = [...dummyUsers];
 
-function delay<T>(data: T, ms = 500): Promise<T> {
+function delay<T>(data: T, ms = 400): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
@@ -19,6 +19,24 @@ export function useAgents() {
   return useQuery({
     queryKey: ['agents'],
     queryFn: () => delay(userStore.filter((u) => u.role === 'admin')),
+  });
+}
+
+export function useCreateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; email: string; role: UserRole }) => {
+      const newUser: User = {
+        id: 'u' + (userStore.length + 1) + '-' + Date.now(),
+        name: input.name,
+        email: input.email,
+        role: input.role,
+        createdAt: new Date().toISOString(),
+      };
+      userStore = [newUser, ...userStore];
+      return delay(newUser, 400);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }
 
